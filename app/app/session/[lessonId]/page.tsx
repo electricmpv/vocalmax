@@ -2,45 +2,81 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, AlertTriangle, BookOpen } from "lucide-react";
 import { useAudioEngine } from "../../../../hooks/useAudioEngine";
 import { RecordButton } from "../../../../components/audio/RecordButton";
 import { FeedbackPanel } from "../../../../components/lesson/FeedbackPanel";
 import { useProgressStore } from "../../../../store/progress";
+import { getExerciseById, getLessonById } from "../../../../content";
 
 interface Props {
   params: Promise<{ lessonId: string }>;
 }
 
-// 示例关卡数据（Phase 3 时替换为真实 content 模块数据）
-const PLACEHOLDER_LESSON = {
-  title: "胸腔共鸣练习",
-  instruction: '闭上嘴，用「嗯~」哼出一个长音。感受胸口的振动，保持放松，不要用力压嗓子。',
-  durationSeconds: 8,
-  passScore: 60,
-  xpReward: 20,
-  safetyNote: "如果喉咙有不适感，请立即停止，休息一下再继续。",
-};
-
 export default function SessionPage({ params }: Props) {
   const { lessonId } = use(params);
+  const router = useRouter();
   const [showSafety, setShowSafety] = useState(true);
 
   const { state, countdown, result, error, startRecording, stopEarly, reset } =
     useAudioEngine();
 
   const completeLesson = useProgressStore((s) => s.completeLesson);
+  const selectedTrack = useProgressStore((s) => s.selectedTrack);
+
+  // 查找关卡数据
+  const exercise = getExerciseById(lessonId);
+
+  // 查找属于哪个 DayLesson，以便找到下一关
+  const parentLesson = exercise
+    ? (() => {
+        for (const l of [
+          ...Array.from({ length: 7 }, (_, i) =>
+            getLessonById(`track-${selectedTrack}-day-0${i + 1}`)
+          ),
+        ].filter(Boolean)) {
+          if (l!.exercises.find((e) => e.id === lessonId)) return l!;
+        }
+        return undefined;
+      })()
+    : undefined;
+
+  // 找到当前关卡在 exercises 中的位置，以便导航到下一关
+  const exerciseIndex = parentLesson?.exercises.findIndex((e) => e.id === lessonId) ?? -1;
+  const nextExercise =
+    exerciseIndex >= 0 && exerciseIndex < 2
+      ? parentLesson?.exercises[exerciseIndex + 1]
+      : undefined;
 
   // 完成关卡
   const handleNext = () => {
-    if (result && result.scores.overall >= PLACEHOLDER_LESSON.passScore) {
-      completeLesson(lessonId, PLACEHOLDER_LESSON.xpReward);
+    if (result && exercise && result.scores.overall >= exercise.passScore) {
+      completeLesson(lessonId, exercise.xpReward);
     }
-    // TODO: Phase 3 时跳转到下一关
-    window.history.back();
+    if (nextExercise) {
+      router.push(`/app/session/${nextExercise.id}`);
+    } else {
+      router.push(`/app?track=${selectedTrack}`);
+    }
   };
 
-  const lesson = PLACEHOLDER_LESSON;
+  if (!exercise) {
+    return (
+      <main className="app-container">
+        <div className="flex flex-col min-h-dvh px-6 py-8 items-center justify-center">
+          <p style={{ color: "var(--color-muted)" }}>找不到关卡：{lessonId}</p>
+          <Link
+            href="/app"
+            className="mt-4 text-sm underline"
+            style={{ color: "var(--color-accent)" }}
+          >
+            返回训练
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="app-container">
@@ -54,17 +90,24 @@ export default function SessionPage({ params }: Props) {
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div>
-            <div className="font-bold">{lesson.title}</div>
+          <div className="flex-1">
+            <div className="font-bold text-sm">{exercise.title}</div>
             <div className="text-xs" style={{ color: "var(--color-muted)" }}>
-              关卡 · {lesson.durationSeconds}秒录音
+              录音 {exercise.durationSeconds}秒 · 及格 {exercise.passScore}分 · +{exercise.xpReward} XP
             </div>
           </div>
+          <Link
+            href="/coach"
+            className="w-10 h-10 rounded-xl flex items-center justify-center active:opacity-75"
+            style={{ background: "var(--color-surface)" }}
+          >
+            <BookOpen className="w-4 h-4" style={{ color: "var(--color-muted)" }} />
+          </Link>
         </header>
 
         <div className="flex-1 flex flex-col">
-          {/* 安全提示（第一次展示） */}
-          {showSafety && state === "idle" && (
+          {/* 安全提示 */}
+          {showSafety && state === "idle" && exercise.safetyNote && (
             <div
               className="flex items-start gap-3 p-4 rounded-2xl mb-6"
               style={{
@@ -81,7 +124,7 @@ export default function SessionPage({ params }: Props) {
                   安全提示
                 </p>
                 <p className="text-sm" style={{ color: "var(--color-muted)" }}>
-                  {lesson.safetyNote}
+                  {exercise.safetyNote}
                 </p>
                 <button
                   onClick={() => setShowSafety(false)}
@@ -94,16 +137,39 @@ export default function SessionPage({ params }: Props) {
             </div>
           )}
 
-          {/* 练习指令 */}
+          {/* 练习指令 + 台词 */}
           {state !== "done" && (
             <div
               className="p-5 rounded-2xl mb-8"
               style={{ background: "var(--color-surface)" }}
             >
               <h2 className="font-bold mb-3">练习指令</h2>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--color-muted)" }}>
-                {lesson.instruction}
+              <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--color-muted)" }}>
+                {exercise.instruction}
               </p>
+
+              {exercise.prompt && (
+                <div
+                  className="p-4 rounded-xl"
+                  style={{ background: "var(--color-surface-2)" }}
+                >
+                  <p className="text-xs mb-2 font-medium" style={{ color: "var(--color-accent)" }}>
+                    台词
+                  </p>
+                  <p className="text-base leading-relaxed font-medium">{exercise.prompt}</p>
+                </div>
+              )}
+
+              {exercise.tips.length > 0 && (
+                <div className="mt-4 flex flex-col gap-1.5">
+                  {exercise.tips.map((tip, i) => (
+                    <p key={i} className="text-xs flex items-start gap-1.5" style={{ color: "var(--color-muted)" }}>
+                      <span style={{ color: "var(--color-accent)" }}>•</span>
+                      {tip}
+                    </p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -145,14 +211,14 @@ export default function SessionPage({ params }: Props) {
               <RecordButton
                 state={state}
                 countdown={countdown}
-                onStart={() => startRecording(lesson.durationSeconds)}
+                onStart={() => startRecording(exercise.durationSeconds)}
                 onStop={stopEarly}
               />
             </div>
           ) : result ? (
             <FeedbackPanel
               result={result}
-              passScore={lesson.passScore}
+              passScore={exercise.passScore}
               onNext={handleNext}
               onRetry={reset}
             />

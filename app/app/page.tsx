@@ -1,97 +1,215 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Suspense } from "react";
-import { Mic, Briefcase, Flame, Star, ChevronRight, BookOpen } from "lucide-react";
+import { Suspense, useEffect } from "react";
+import { Mic, Briefcase, Flame, Star, ChevronRight, BookOpen, CheckCircle2, Lock } from "lucide-react";
+import { useProgress } from "../../hooks/useProgress";
+import type { LessonExercise } from "../../content/schema";
+
+const TYPE_LABELS: Record<string, string> = {
+  resonance: "共鸣",
+  stability: "稳定",
+  pace: "节奏",
+  "scene-reading": "场景",
+};
+
+function ExerciseRow({
+  exercise,
+  index,
+  isDone,
+  locked,
+}: {
+  exercise: LessonExercise;
+  index: number;
+  isDone: boolean;
+  locked: boolean;
+}) {
+  const href = locked ? "#" : `/app/session/${exercise.id}`;
+
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-opacity ${locked ? "opacity-40 pointer-events-none" : "active:opacity-75"}`}
+      style={{
+        background: isDone ? "rgba(34,197,94,0.05)" : "var(--color-surface)",
+        borderColor: isDone ? "var(--color-success)" : "var(--color-border)",
+      }}
+    >
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
+        style={{
+          background: isDone ? "var(--color-success)" : "var(--color-surface-2)",
+          color: isDone ? "white" : "var(--color-accent)",
+        }}
+      >
+        {isDone ? <CheckCircle2 className="w-4 h-4" /> : locked ? <Lock className="w-3.5 h-3.5" style={{ color: "var(--color-muted)" }} /> : index + 1}
+      </div>
+      <div className="flex-1">
+        <div className="font-medium text-sm">{exercise.title}</div>
+        <div className="text-xs mt-0.5 flex items-center gap-1.5" style={{ color: "var(--color-muted)" }}>
+          <span
+            className="px-1.5 py-0.5 rounded"
+            style={{ background: "var(--color-surface-2)", fontSize: "10px" }}
+          >
+            {TYPE_LABELS[exercise.type]}
+          </span>
+          <span>+{exercise.xpReward} XP</span>
+          <span>·</span>
+          <span>{exercise.durationSeconds}秒</span>
+        </div>
+      </div>
+      {!locked && !isDone && (
+        <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-muted)" }} />
+      )}
+    </Link>
+  );
+}
 
 function TrainingDashboard() {
   const searchParams = useSearchParams();
-  const track = searchParams.get("track") ?? "a";
-  const trackLabel = track === "a" ? "约会自信" : "职场权威";
-  const TrackIcon = track === "a" ? Mic : Briefcase;
+  const router = useRouter();
+  const trackParam = searchParams.get("track") as "a" | "b" | null;
 
-  // 今日课程示例数据（Phase 3 时换成真实数据）
-  const todayLessons = [
-    { id: `track-${track}-day-01-ex-1`, title: "胸腔共鸣热身", type: "共鸣", xp: 15, locked: false },
-    { id: `track-${track}-day-01-ex-2`, title: "低沉元音延伸", type: "稳定", xp: 20, locked: false },
-    { id: `track-${track}-day-01-ex-3`, title: "场景跟读", type: "节奏", xp: 25, locked: false },
-  ];
+  const {
+    selectedTrack,
+    selectTrack,
+    currentDay,
+    currentLesson,
+    totalXP,
+    streakDays,
+    xpToday,
+    isExerciseDone,
+    trackLessons,
+  } = useProgress();
+
+  // 同步 URL 中的 track 参数到 store
+  useEffect(() => {
+    if (trackParam && trackParam !== selectedTrack) {
+      selectTrack(trackParam);
+    }
+  }, [trackParam, selectedTrack, selectTrack]);
+
+  const trackLabel = selectedTrack === "a" ? "约会自信" : "职场权威";
+  const TrackIcon = selectedTrack === "a" ? Mic : Briefcase;
 
   return (
     <main className="app-container">
       <div className="flex flex-col min-h-dvh px-6 py-8">
         {/* 顶部状态栏 */}
-        <header className="flex items-center justify-between mb-8">
+        <header className="flex items-center justify-between mb-6">
           <Link href="/" className="text-sm active:opacity-75" style={{ color: "var(--color-muted)" }}>
             ← 首页
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
               <Flame className="w-4 h-4" style={{ color: "var(--color-accent)" }} />
-              <span className="text-sm font-bold">0</span>
+              <span className="text-sm font-bold">{streakDays}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Star className="w-4 h-4" style={{ color: "var(--color-accent)" }} />
-              <span className="text-sm font-bold">0 XP</span>
+              <span className="text-sm font-bold">{totalXP} XP</span>
             </div>
           </div>
         </header>
 
-        {/* 赛道标识 */}
+        {/* 赛道标识 + 今日进度 */}
         <div
-          className="flex items-center gap-3 p-4 rounded-2xl mb-6"
+          className="flex items-center gap-3 p-4 rounded-2xl mb-4"
           style={{ background: "var(--color-surface)" }}
         >
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "var(--color-accent)" }}
           >
             <TrackIcon className="w-5 h-5 text-black" />
           </div>
-          <div>
+          <div className="flex-1">
             <div className="font-bold">{trackLabel}</div>
             <div className="text-sm" style={{ color: "var(--color-muted)" }}>
-              第 1 天 · 感受共鸣腔
+              {currentLesson ? `第 ${currentDay} 天 · ${currentLesson.subtitle}` : "全部完成！"}
             </div>
           </div>
+          <div className="text-right">
+            <div className="text-sm font-bold" style={{ color: "var(--color-accent)" }}>
+              +{xpToday}
+            </div>
+            <div className="text-xs" style={{ color: "var(--color-muted)" }}>今日 XP</div>
+          </div>
+        </div>
+
+        {/* 切换赛道 */}
+        <div className="flex gap-2 mb-6">
+          {(["a", "b"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => {
+                selectTrack(t);
+                router.replace(`/app?track=${t}`);
+              }}
+              className="flex-1 py-2 rounded-xl text-sm font-medium transition-all active:opacity-75"
+              style={{
+                background: selectedTrack === t ? "var(--color-accent)" : "var(--color-surface)",
+                color: selectedTrack === t ? "black" : "var(--color-muted)",
+              }}
+            >
+              {t === "a" ? "约会自信" : "职场权威"}
+            </button>
+          ))}
         </div>
 
         {/* 今日关卡 */}
+        {currentLesson && (
+          <div className="mb-6">
+            <h2 className="text-sm font-medium mb-3" style={{ color: "var(--color-muted)" }}>
+              今日训练 · {currentLesson.title}
+            </h2>
+            <div className="flex flex-col gap-3">
+              {currentLesson.exercises.map((ex, idx) => (
+                <ExerciseRow
+                  key={ex.id}
+                  exercise={ex}
+                  index={idx}
+                  isDone={isExerciseDone(ex.id)}
+                  locked={false}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 课程进度预览（最多显示3天） */}
         <div className="mb-6">
           <h2 className="text-sm font-medium mb-3" style={{ color: "var(--color-muted)" }}>
-            今日训练
+            课程进度
           </h2>
-          <div className="flex flex-col gap-3">
-            {todayLessons.map((lesson, idx) => (
-              <Link
-                key={lesson.id}
-                href={`/app/session/${lesson.id}`}
-                className="flex items-center gap-4 p-4 rounded-2xl border active:opacity-75"
-                style={{
-                  background: "var(--color-surface)",
-                  borderColor: "var(--color-border)",
-                }}
-              >
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {trackLessons.slice(0, 7).map((lesson) => {
+              const allDone = lesson.exercises.every((ex) => isExerciseDone(ex.id));
+              const isCurrent = lesson.day === currentDay;
+              return (
                 <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
-                  style={{ background: "var(--color-surface-2)", color: "var(--color-accent)" }}
+                  key={lesson.id}
+                  className="flex-shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold"
+                  style={{
+                    background: allDone
+                      ? "var(--color-success)"
+                      : isCurrent
+                      ? "var(--color-accent)"
+                      : "var(--color-surface)",
+                    color: allDone || isCurrent ? (allDone ? "white" : "black") : "var(--color-muted)",
+                    border: isCurrent ? "none" : `1px solid var(--color-border)`,
+                  }}
                 >
-                  {idx + 1}
+                  <span>{lesson.day}</span>
+                  <span style={{ fontSize: "9px", opacity: 0.7 }}>天</span>
                 </div>
-                <div className="flex-1">
-                  <div className="font-medium text-sm">{lesson.title}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "var(--color-muted)" }}>
-                    {lesson.type} · +{lesson.xp} XP
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--color-muted)" }} />
-              </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* 跳转教程 */}
+        {/* 教程入口 */}
         <Link
           href="/coach"
           className="flex items-center gap-3 p-4 rounded-2xl border active:opacity-75"
@@ -101,6 +219,7 @@ function TrainingDashboard() {
           <span className="text-sm" style={{ color: "var(--color-muted)" }}>
             不确定怎么练？先看教练教程
           </span>
+          <ChevronRight className="w-4 h-4 ml-auto flex-shrink-0" style={{ color: "var(--color-muted)" }} />
         </Link>
       </div>
     </main>
