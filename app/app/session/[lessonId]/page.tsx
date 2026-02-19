@@ -7,6 +7,7 @@ import { ArrowLeft, AlertTriangle, BookOpen } from "lucide-react";
 import { useAudioEngine } from "../../../../hooks/useAudioEngine";
 import { RecordButton } from "../../../../components/audio/RecordButton";
 import { FeedbackPanel } from "../../../../components/lesson/FeedbackPanel";
+import { ShareModal } from "../../../../components/share/ShareModal";
 import { useProgressStore } from "../../../../store/progress";
 import { getExerciseById, getLessonById } from "../../../../content";
 
@@ -18,6 +19,7 @@ export default function SessionPage({ params }: Props) {
   const { lessonId } = use(params);
   const router = useRouter();
   const [showSafety, setShowSafety] = useState(true);
+  const [showShare, setShowShare] = useState(false);
 
   const { state, countdown, result, error, startRecording, stopEarly, reset } =
     useAudioEngine();
@@ -60,6 +62,20 @@ export default function SessionPage({ params }: Props) {
       router.push(`/app?track=${selectedTrack}`);
     }
   };
+
+  // 分享卡数据
+  const shareData = result && exercise
+    ? {
+        voiceScore: result.scores.overall,
+        depth: result.scores.depth,
+        stability: result.scores.stability,
+        pace: result.scores.pace,
+        streakDays: useProgressStore.getState().streakDays,
+        xpToday: useProgressStore.getState().xpToday,
+        improvement: result.improvement,
+        trackId: selectedTrack,
+      }
+    : null;
 
   if (!exercise) {
     return (
@@ -221,10 +237,16 @@ export default function SessionPage({ params }: Props) {
               passScore={exercise.passScore}
               onNext={handleNext}
               onRetry={reset}
+              onShare={() => setShowShare(true)}
             />
           ) : null}
         </div>
       </div>
+
+      {/* 分享卡 Modal */}
+      {showShare && shareData && (
+        <ShareModal data={shareData} onClose={() => setShowShare(false)} />
+      )}
     </main>
   );
 }

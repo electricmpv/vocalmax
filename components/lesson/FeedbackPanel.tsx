@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
+import { CheckCircle, AlertCircle, TrendingUp, Share2 } from "lucide-react";
 import type { AnalysisResult } from "../../core/types";
 
 interface Props {
@@ -8,6 +8,7 @@ interface Props {
   passScore: number;
   onNext?: () => void;
   onRetry?: () => void;
+  onShare?: () => void;
 }
 
 const SCORE_LABELS: Record<string, string> = {
@@ -16,7 +17,7 @@ const SCORE_LABELS: Record<string, string> = {
   pace: "节奏感",
 };
 
-export function FeedbackPanel({ result, passScore, onNext, onRetry }: Props) {
+export function FeedbackPanel({ result, passScore, onNext, onRetry, onShare }: Props) {
   const { scores, feedback, improvement, metrics } = result;
   const passed = scores.overall >= passScore;
 
@@ -123,6 +124,15 @@ export function FeedbackPanel({ result, passScore, onNext, onRetry }: Props) {
             style={{ borderColor: "var(--color-border)" }}
           >
             再试一次
+          </button>
+        )}
+        {onShare && passed && (
+          <button
+            onClick={onShare}
+            className="py-4 px-4 rounded-2xl border font-bold text-sm active:opacity-75"
+            style={{ borderColor: "var(--color-border)" }}
+          >
+            <Share2 className="w-5 h-5" style={{ color: "var(--color-accent)" }} />
           </button>
         )}
         {onNext && (
