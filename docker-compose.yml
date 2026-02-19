@@ -1,0 +1,23 @@
+services:
+  vocalmax:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vocalmax
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_APP_URL=${APP_URL:-http://localhost:3001}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
