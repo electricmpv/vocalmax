@@ -25,3 +25,16 @@
 - 最终镜像正常生成 ✓
 
 ---
+
+## Commit 3 — 最小 Smoke 脚本 (2026-02-20)
+
+**变更：**
+- `scripts/nightly_smoke.sh`：可独立运行的三步检查（lint → typecheck → build）
+- 日志保存到 `tmp/smoke-logs/<timestamp>.log`
+- `.gitignore`：新增 `tmp/` 排除
+- `docs/progress.md`：本文件
+
+**验收：**
+- `bash scripts/nightly_smoke.sh` → All checks passed ✓
+
+---
