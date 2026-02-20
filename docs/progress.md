@@ -38,3 +38,17 @@
 - `bash scripts/nightly_smoke.sh` → All checks passed ✓
 
 ---
+
+## Commit 4 — GitHub Actions CI (2026-02-20)
+
+**变更：**
+- `.github/workflows/ci.yml`：
+  - Job `check`：ubuntu-latest，Node 22，npm ci → lint → typecheck → build
+  - Job `e2e`：仅在 PR 且存在 `e2e/` 目录时运行，上传 Playwright report artifact
+  - `concurrency`：同 ref 取消上一次 CI 节省额度
+
+**验收：**
+- 本地语法检查通过（yml 格式正确）
+- push 到 GitHub 后将自动触发 CI
+
+---
