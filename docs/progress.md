@@ -90,3 +90,48 @@ npm run test:e2e → 1 passed (11.8s) ✓
 - `docs/progress.md`：本条记录
 
 ---
+
+## Commit 6 — CI 修复：workflow 解析失败 (2026-02-20)
+
+### 故障现象
+
+push 到 main 后 GitHub Actions 显示：
+- `completed / failure`，`total_jobs: 0`
+- 错误消息："This run likely failed because of a workflow file issue"
+- 日志不可获取（API 返回 404）
+
+### 根因分析
+
+定位到三个问题叠加导致 GitHub 无法解析/执行 workflow：
+
+1. **Unicode 中点字符** — `name: Lint · Typecheck · Build`  
+   `·` (U+00B7) 在某些 YAML 解析器上会触发兼容性问题，GitHub Actions 无法确认安全解析。
+   → 修复：改为 `Lint Typecheck Build`
+
+2. **`if:` 条件错误包装** — `if: ${{ expr }}`  
+   GitHub Actions 官方文档明确：`if:` 字段内表达式**不应**用 `${{ }}` 包装，直接写表达式即可。
+   → 修复：`if: github.event_name == 'pull_request'`
+
+3. **`hashFiles('e2e/**')` 路径错误**  
+   仓库测试目录实际为 `tests/e2e/`，`e2e/` 目录不存在，`hashFiles` 永远返回空。  
+   → 修复：删除 hashFiles 条件，e2e job 在所有 PR 时均跑（符合 CI 设计意图）
+
+4. **新增 `workflow_dispatch`** — 允许手动触发，便于后续诊断
+
+### 修复后验证
+
+```
+Run #22217430272 (cc0def4 push to main)
+→ Lint Typecheck Build: ✓ (56s)
+  - Checkout ✓
+  - Setup Node.js 22 ✓
+  - npm ci ✓
+  - lint: 0 errors ✓
+  - typecheck: pass ✓
+  - build: 8 routes ✓
+→ E2E Tests: skipped (push event，非 PR，符合预期)
+```
+
+GitHub Actions Run：https://github.com/electricmpv/vocalmax/actions/runs/22217430272
+
+---
