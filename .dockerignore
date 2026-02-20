@@ -1,0 +1,35 @@
+# 依赖（容器内重新安装）
+node_modules/
+
+# 构建输出（容器内重新构建）
+.next/
+
+# Git 历史
+.git/
+.gitignore
+
+# 测试与 CI
+tests/
+e2e/
+.github/
+playwright-report/
+test-results/
+
+# 文档（运行时不需要）
+docs/
+*.md
+!README.md
+
+# 开发配置
+.env
+.env.local
+.env.*.local
+.eslintignore
+eslint.config.mjs
+tsconfig*.json
+
+# 日志与临时文件
+*.log
+npm-debug.log*
+.DS_Store
+tmp/

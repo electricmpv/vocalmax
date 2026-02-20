@@ -13,3 +13,15 @@
 - `npm run smoke` → lint(0 errors) + typecheck(pass) + build(pass) ✓
 
 ---
+
+## Commit 2 — Docker 优化 (2026-02-20)
+
+**变更：**
+- `.dockerignore`：排除 `node_modules/`、`.next/`、`.git/`、tests、docs、日志等
+- `README.md`：Docker 部分增加构建上下文说明
+
+**验收：**
+- `docker build` 成功，构建上下文 ~300KB（vs 之前无 .dockerignore 时的大体积）
+- 最终镜像正常生成 ✓
+
+---

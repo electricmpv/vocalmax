@@ -54,6 +54,8 @@ docker compose logs -f
 
 访问 [http://localhost:3001](http://localhost:3001)
 
+> `.dockerignore` 已配置，构建上下文仅传输源码（约 300KB），不包含 `node_modules/` 和 `.next/` 目录。
+
 ### 停止服务
 
 ```bash
