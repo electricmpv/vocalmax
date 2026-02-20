@@ -39,6 +39,24 @@ npm run dev
 
 ---
 
+## 本机首次安装 Playwright（E2E 测试）
+
+```bash
+# 1. 安装 npm 依赖（包含 @playwright/test）
+npm ci
+
+# 2. 安装 Chromium 及系统依赖（首次执行，需 sudo 权限）
+npx playwright install --with-deps chromium
+
+# 3. 运行 E2E 测试（会自动在端口 3002 启动 dev server）
+npm run test:e2e
+```
+
+> **注意**：E2E 使用端口 **3002**，避免与本机其他服务（如 Gitea）冲突。
+> 测试完成后会自动停止 dev server。
+
+---
+
 ## Docker 部署（推荐）
 
 ```bash
