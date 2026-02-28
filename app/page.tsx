@@ -29,8 +29,7 @@ export default function LandingPage() {
               竞争力
             </h1>
             <p className="text-lg leading-relaxed" style={{ color: "var(--color-muted)" }}>
-              每天 3 个关卡，训练更深沉、更稳定、更有节奏感的声音。
-              像多邻国一样——但训练你的声场。
+              每天 3 个关卡，训练更深沉、更稳定、更有节奏感的声音。像多邻国一样——但训练你的声场。
             </p>
           </div>
 

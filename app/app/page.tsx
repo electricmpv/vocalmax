@@ -90,8 +90,11 @@ function TrainingDashboard() {
     }
   }, [trackParam, selectedTrack, selectTrack]);
 
-  const trackLabel = selectedTrack === "a" ? "约会自信" : "职场权威";
-  const TrackIcon = selectedTrack === "a" ? Mic : Briefcase;
+  // 优先用 URL 参数决定当前赛道显示，避免 useEffect 延迟导致 tab 首帧高亮错误
+  const activeTrack = (trackParam ?? selectedTrack) as "a" | "b";
+
+  const trackLabel = activeTrack === "a" ? "约会自信" : "职场权威";
+  const TrackIcon = activeTrack === "a" ? Mic : Briefcase;
 
   return (
     <main className="app-container">
@@ -149,8 +152,8 @@ function TrainingDashboard() {
               }}
               className="flex-1 py-2 rounded-xl text-sm font-medium transition-all active:opacity-75"
               style={{
-                background: selectedTrack === t ? "var(--color-accent)" : "var(--color-surface)",
-                color: selectedTrack === t ? "black" : "var(--color-muted)",
+                background: activeTrack === t ? "var(--color-accent)" : "var(--color-surface)",
+                color: activeTrack === t ? "black" : "var(--color-muted)",
               }}
             >
               {t === "a" ? "约会自信" : "职场权威"}
