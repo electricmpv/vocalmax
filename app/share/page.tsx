@@ -1,17 +1,29 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Download, Link2, CheckCircle2, Loader2, Mic } from "lucide-react";
 import { useShareCard } from "../../hooks/useShareCard";
-import { getMemeCaption } from "../../lib/share-card-renderer";
-import type { ShareCardData } from "../../lib/share-card-renderer";
+import {
+  getMemeCaption,
+  getMemeType,
+  renderQuizCard,
+  buildQuizShareUrl,
+} from "../../lib/share-card-renderer";
+import type { ShareCardData, QuizCardParams } from "../../lib/share-card-renderer";
 import type { TrackId } from "../../store/progress";
+import type { QuizType } from "../../content/quiz-sentences";
 
 function ShareCardView() {
   const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
+  const [quizPreviewUrl, setQuizPreviewUrl] = useState<string | null>(null);
+  const [quizBlob, setQuizBlob] = useState<Blob | null>(null);
+  const [quizParams, setQuizParams] = useState<QuizCardParams | null>(null);
+
+  const mode = searchParams.get("mode");
+  const isQuizMode = mode === "quiz";
 
   const voiceScore = Number(searchParams.get("s") ?? 0);
   const depth = Number(searchParams.get("d") ?? 0);
@@ -19,6 +31,9 @@ function ShareCardView() {
   const pace = Number(searchParams.get("p") ?? 0);
   const streakDays = Number(searchParams.get("streak") ?? 0);
   const trackId = (searchParams.get("track") ?? "a") as TrackId;
+  const quizType = (searchParams.get("qt") ?? "dating") as QuizType;
+  const sentenceIndex = Number(searchParams.get("si") ?? 0);
+  const forced = searchParams.get("forced") === "1";
 
   const hasData = voiceScore > 0;
 
@@ -36,19 +51,77 @@ function ShareCardView() {
   const { isGenerating, previewUrl, generate, download, copyLink, cleanup } =
     useShareCard();
 
+  // Quiz 模式：生成 MEME 卡
   useEffect(() => {
-    if (hasData) generate(data);
-    return cleanup;
+    if (!isQuizMode || !hasData) return;
+    const memeType = getMemeType(null, forced, quizType);
+    const params: QuizCardParams = {
+      scores: { s: voiceScore, d: depth, st: stability, p: pace },
+      quizType,
+      sentenceIndex,
+      forced,
+      memeType,
+      copyLine1: "",
+      copyLine2: "",
+      tagline: "",
+    };
+    setQuizParams(params);
+    renderQuizCard(params).then((blob) => {
+      const url = URL.createObjectURL(blob);
+      setQuizPreviewUrl(url);
+      setQuizBlob(blob);
+    });
+    return () => {
+      setQuizPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasData]);
+  }, [isQuizMode, hasData]);
+
+  // 普通模式
+  useEffect(() => {
+    if (!isQuizMode && hasData) generate(data);
+    if (!isQuizMode) return cleanup;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isQuizMode, hasData]);
 
   const handleCopy = async () => {
+    if (isQuizMode && quizParams) {
+      const appUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const link = buildQuizShareUrl(quizParams, appUrl);
+      try {
+        await navigator.clipboard.writeText(link);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch { /* ignore */ }
+      return;
+    }
     const ok = await copyLink(data);
     if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const handleDownload = useCallback(() => {
+    const blob = isQuizMode ? quizBlob : null;
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vocalmax-quiz-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } else {
+      download();
+    }
+  }, [isQuizMode, quizBlob, download]);
+
+  const activePreviewUrl = isQuizMode ? quizPreviewUrl : previewUrl;
+  const isLoadingQuiz = isQuizMode && !quizPreviewUrl && hasData;
+  const isLoadingNormal = !isQuizMode && isGenerating;
+  const isLoadingCard = isLoadingQuiz || isLoadingNormal;
 
   const trackLabel = trackId === "a" ? "约会自信" : "职场权威";
 
@@ -76,23 +149,23 @@ function ShareCardView() {
                 maxHeight: "55vh",
               }}
             >
-              {isGenerating ? (
+              {isLoadingCard ? (
                 <Loader2
                   className="w-10 h-10 animate-spin"
                   style={{ color: "var(--color-accent)" }}
                 />
-              ) : previewUrl ? (
+              ) : activePreviewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={previewUrl}
+                  src={activePreviewUrl}
                   alt="分享卡"
                   className="w-full h-full object-contain"
                 />
               ) : null}
             </div>
 
-            {/* 梗化文案 */}
-            {!isGenerating && (
+            {/* 梗化文案（仅普通模式） */}
+            {!isQuizMode && !isGenerating && (
               <p
                 className="text-center text-sm mb-6 font-medium"
                 style={{ color: "var(--color-accent)" }}
@@ -104,8 +177,8 @@ function ShareCardView() {
             {/* 操作按钮 */}
             <div className="flex gap-3 mb-8">
               <button
-                onClick={download}
-                disabled={isGenerating || !previewUrl}
+                onClick={handleDownload}
+                disabled={isLoadingCard || !activePreviewUrl}
                 className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-sm disabled:opacity-40 active:opacity-75"
                 style={{ background: "var(--color-accent)", color: "black" }}
               >

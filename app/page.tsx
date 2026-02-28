@@ -66,6 +66,15 @@ export default function LandingPage() {
             </div>
           </div>
 
+          {/* 声音测试快速入口 */}
+          <Link
+            href="/quiz"
+            className="flex items-center justify-center gap-2 py-3 rounded-2xl border mb-4 active:opacity-75"
+            style={{ borderColor: "var(--color-accent)", color: "var(--color-accent)" }}
+          >
+            <span className="text-sm font-bold">🎙 30秒测试你的声音 →</span>
+          </Link>
+
           {/* 两条赛道 CTA */}
           <div className="flex flex-col gap-4">
             <Link

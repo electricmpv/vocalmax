@@ -102,6 +102,23 @@ export function generateImprovement(metrics: AudioMetrics, scores: VoiceScores):
   return "稳步提升中，继续坚持！";
 }
 
+export interface ForcedVoiceResult {
+  isForced: boolean;
+  signals: string[];
+}
+
+/** 检测刻意压低声音（反作弊）：≥3 个信号则判定为 forced */
+export function detectForcedVoice(metrics: AudioMetrics): ForcedVoiceResult {
+  const signals: string[] = [];
+  if (metrics.f0_median !== null && metrics.f0_median > 0 && metrics.f0_median < 85) {
+    signals.push("f0_too_low");
+  }
+  if (metrics.stability < 0.40) signals.push("stability_low");
+  if (metrics.confidence < 0.35) signals.push("confidence_low");
+  if (metrics.f0_range < 10 && metrics.confidence > 0.3) signals.push("f0_range_narrow");
+  return { isForced: signals.length >= 3, signals };
+}
+
 /** 完整分析流程 */
 export function buildAnalysisResult(metrics: AudioMetrics): AnalysisResult {
   const scores = calcScores(metrics);
