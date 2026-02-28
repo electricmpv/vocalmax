@@ -410,11 +410,14 @@ function getQuizCopy(meme: MemeType, score: number): [string, string] {
 export function getMemeType(
   f0Median: number | null,
   forced: boolean,
-  quizType: QuizType
+  quizType: QuizType,
+  overallScore?: number
 ): MemeType {
   if (forced) return "forced";
   const hz = f0Median ?? 130;
-  const score = hz > 120 ? 90 : hz > 100 ? 75 : 60;
+  const score = f0Median !== null
+    ? (hz > 120 ? 90 : hz > 100 ? 75 : 60)
+    : (overallScore ?? 90);
   if (quizType === "dating") {
     if (score >= 80) return "magnetic";
     if (score >= 60) return "natural";

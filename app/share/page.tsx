@@ -54,7 +54,7 @@ function ShareCardView() {
   // Quiz 模式：生成 MEME 卡
   useEffect(() => {
     if (!isQuizMode || !hasData) return;
-    const memeType = getMemeType(null, forced, quizType);
+    const memeType = getMemeType(null, forced, quizType, voiceScore);
     const params: QuizCardParams = {
       scores: { s: voiceScore, d: depth, st: stability, p: pace },
       quizType,
